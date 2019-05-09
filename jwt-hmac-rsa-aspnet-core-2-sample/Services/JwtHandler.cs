@@ -1,12 +1,12 @@
+﻿using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using JwtRsaHmacSample.Api.Framework;
+using JwtRsaHmacSample.Api.Models;
 using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
-using JwtRsaHmacSample.Api.Framework;
-using JwtRsaHmacSample.Api.Models;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 
 namespace JwtRsaHmacSample.Api.Services
 {
@@ -22,7 +22,7 @@ namespace JwtRsaHmacSample.Api.Services
         public JwtHandler(IOptions<JwtSettings> settings)
         {
             _settings = settings.Value;
-            if(_settings.UseRsa)
+            if (_settings.UseRsa)
             {
                 InitializeRsa();
             }
@@ -35,31 +35,37 @@ namespace JwtRsaHmacSample.Api.Services
 
         private void InitializeRsa()
         {
-            using(RSA publicRsa = RSA.Create())
-            {
-                var publicKeyXml = File.ReadAllText(_settings.RsaPublicKeyXML);
-                publicRsa.FromXmlString(publicKeyXml);
-                _issuerSigningKey = new RsaSecurityKey(publicRsa);
-            }
-            if(string.IsNullOrWhiteSpace(_settings.RsaPrivateKeyXML))
+            //using (RSA publicRsa = RSA.Create())
+            //{
+            //    var publicKeyXml = File.ReadAllText(_settings.RsaPublicKeyXML);
+            //    publicRsa.FromXmlString(publicKeyXml, 0);
+            //    _issuerSigningKey = new RsaSecurityKey(publicRsa);
+            //}
+            RSA publicRsa = RSA.Create();
+            var publicKeyXml = File.ReadAllText(_settings.RsaPublicKeyXML);
+            publicRsa.FromXmlString(publicKeyXml, 0);
+            _issuerSigningKey = new RsaSecurityKey(publicRsa);
+
+            if (string.IsNullOrWhiteSpace(_settings.RsaPrivateKeyXML))
             {
                 return;
             }
-            using(RSA privateRsa = RSA.Create())
-            {
+            //using (RSA privateRsa = RSA.Create())
+            //{
+                RSA privateRsa = RSA.Create();
                 var privateKeyXml = File.ReadAllText(_settings.RsaPrivateKeyXML);
-                privateRsa.FromXmlString(privateKeyXml);
+                privateRsa.FromXmlString(privateKeyXml, 0);
                 var privateKey = new RsaSecurityKey(privateRsa);
                 _signingCredentials = new SigningCredentials(privateKey, SecurityAlgorithms.RsaSha256);
-            }
+            //}
         }
 
         private void InitializeHmac()
         {
             _issuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.HmacSecretKey));
-            _signingCredentials = new SigningCredentials(_issuerSigningKey, SecurityAlgorithms.HmacSha256); 
+            _signingCredentials = new SigningCredentials(_issuerSigningKey, SecurityAlgorithms.HmacSha256);
         }
-        
+
         private void InitializeJwtParameters()
         {
             _jwtHeader = new JwtHeader(_signingCredentials);
@@ -68,7 +74,7 @@ namespace JwtRsaHmacSample.Api.Services
                 ValidateAudience = false,
                 ValidIssuer = _settings.Issuer,
                 IssuerSigningKey = _issuerSigningKey
-            }; 
+            };
         }
 
         public JWT Create(string userId)
